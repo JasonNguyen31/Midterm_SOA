@@ -22,7 +22,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({ currentUser, language }) => {
     const [errorMessage, setErrorMessage] = useState('');
     const [showOTPInput, setShowOTPInput] = useState(false);
     const [otpValue, setOtpValue] = useState('');
-    const [timeRemaining, setTimeRemaining] = useState(10);
+    const [timeRemaining, setTimeRemaining] = useState(300);
 
     // Ref to TuitionInfo component
     const tuitionInfoRef = useRef<TuitionInfoRef>(null);
@@ -38,7 +38,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({ currentUser, language }) => {
             setTermsAccepted(state.termsAccepted || false);
             setShowOTPInput(state.showOTPInput || false);
             setOtpValue(state.otpValue || '');
-            setTimeRemaining(state.timeRemaining || 10);
+            setTimeRemaining(state.timeRemaining || 300);
         }
     }, []);
 
@@ -90,7 +90,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({ currentUser, language }) => {
         setTermsAccepted(false);
         setShowOTPInput(false);
         setOtpValue('');
-        setTimeRemaining(10);
+        setTimeRemaining(300);
     };
 
     const hasFilledAllFields = () => {
@@ -139,7 +139,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({ currentUser, language }) => {
         }
 
         setShowOTPInput(true);
-        setTimeRemaining(10);
+        setTimeRemaining(300);
     };
 
     const handlePayment = () => {
@@ -163,7 +163,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({ currentUser, language }) => {
                 setInputStudentId('');
                 setInputStudentName('');
                 setSearchedStudent(null);
-                setTimeRemaining(10);
+                setTimeRemaining(300);
                 setShowErrorModal(false);
 
                 // Reset TuitionInfo via ref
@@ -181,7 +181,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({ currentUser, language }) => {
     // Hàm Resend OTP
     const handleResendOTP = () => {
         setOtpValue('');
-        setTimeRemaining(10);
+        setTimeRemaining(300);
         setShowErrorModal(true);
         setErrorMessage(language === 'vi' ? 'Mã OTP mới đã được gửi!' : 'New OTP code has been sent!');
     };
@@ -309,8 +309,8 @@ const PaymentForm: React.FC<PaymentFormProps> = ({ currentUser, language }) => {
 
                         <p className="text-xs text-gray-500 text-center" style={{ marginTop: '8px' }}>
                             {language === 'vi'
-                                ? 'Mã OTP có hiệu lực trong 10 giây'
-                                : 'OTP code is valid for 10 seconds'}
+                                ? 'Mã OTP có hiệu lực trong 5 phút'
+                                : 'OTP code is valid for 5 minutes'}
                         </p>
                     </div>
                 </div>
