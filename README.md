@@ -404,22 +404,6 @@ rm -rf node_modules/.tmp
 npm run dev
 ```
 
-## THÀNH VIÊN NHÓM
-
-### Frontend Development
-
-- Phát triển giao diện React.js
-- Implement TypeScript interfaces
-- Thiết kế UI/UX responsive
-- Xử lý state management
-
-### Backend Development (Chuẩn bị tích hợp)
-
-- Thiết kế API endpoints
-- Xác thực và phân quyền
-- Database design
-- Payment gateway integration
-
 ## LIÊN HỆ & HỖ TRỢ
 
 - **Repository**: https://github.com/JasonNguyen31/Midterm_SOA
