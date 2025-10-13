@@ -36,7 +36,7 @@ export const mockStudentData: StudentInfo = {
     course: 'K25',
     phone: '0797702318',
     email: '521h0185@student.tdtu.edu.vn',
-    availableBalance: 25000000
+    availableBalance: 25100000
 };
 
 // Mock student database - Student 2

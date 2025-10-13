@@ -1,29 +1,36 @@
 import React, { useState, useEffect, useRef } from 'react';
+import axios from 'axios';
 import PayerInfo from '../PayerInfo/PayerInfo';
 import TuitionInfo from '../TuitionInfo/TuitionInfo';
 import type { TuitionInfoRef } from '../TuitionInfo/TuitionInfo';
 import PaymentDetails from '../PaymentDetails/PaymentDetails';
 import Button from '../../common/Button/Button';
 import { UI_CONSTANTS } from '../../../utils/constants';
-import { getStudentById, getCurrentTuitionFee } from '../../../data/mockData';
-import ErrorModal from '../../../components/common/Modal/ErrorModal';
+import type { StudentData, UserData } from '../../../types/auth.types';
+import ErrorModal from '../../common/Modal/ErrorModal';
 
 interface PaymentFormProps {
-    currentUser: any;
+    currentUser: UserData;
     language: 'vi' | 'en';
 }
 
 const PaymentForm: React.FC<PaymentFormProps> = ({ currentUser, language }) => {
+    
     const [termsAccepted, setTermsAccepted] = useState(false);
     const [inputStudentId, setInputStudentId] = useState('');
     const [inputStudentName, setInputStudentName] = useState('');
-    const [searchedStudent, setSearchedStudent] = useState<any>(null);
+    const [searchedStudent, setSearchedStudent] = useState<StudentData | null>(null);
     const [showErrorModal, setShowErrorModal] = useState(false);
     const [errorMessage, setErrorMessage] = useState('');
     const [showOTPInput, setShowOTPInput] = useState(false);
     const [otpValue, setOtpValue] = useState('');
     const [timeRemaining, setTimeRemaining] = useState(300);
+    const [loading, setLoading] = useState(false);
 
+    const [shouldReloadAfterModal, setShouldReloadAfterModal] = useState(false);
+    // The following to trak updated user data
+    const [updatedUser, setUpdatedUser] = useState<UserData>(currentUser);
+    const [otpAttempts, setOtpAttempts] = useState(0);
     // Ref to TuitionInfo component
     const tuitionInfoRef = useRef<TuitionInfoRef>(null);
 
@@ -38,7 +45,9 @@ const PaymentForm: React.FC<PaymentFormProps> = ({ currentUser, language }) => {
             setTermsAccepted(state.termsAccepted || false);
             setShowOTPInput(state.showOTPInput || false);
             setOtpValue(state.otpValue || '');
+            
             setTimeRemaining(state.timeRemaining || 300);
+
         }
     }, []);
 
@@ -91,6 +100,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({ currentUser, language }) => {
         setShowOTPInput(false);
         setOtpValue('');
         setTimeRemaining(300);
+        setOtpAttempts(0);
     };
 
     const hasFilledAllFields = () => {
@@ -99,18 +109,15 @@ const PaymentForm: React.FC<PaymentFormProps> = ({ currentUser, language }) => {
 
     const isStudentInfoValid = () => {
         if (!hasFilledAllFields()) return false;
-
-        const foundStudent = getStudentById(inputStudentId.trim());
-        if (!foundStudent) return false;
-
-        return inputStudentName.trim().toLowerCase() === foundStudent.fullName.toLowerCase();
+        if (!searchedStudent) return false;
+        return inputStudentName.trim().toLowerCase() === searchedStudent.full_name.toLowerCase();
     };
 
     const isButtonEnabled = () => {
-        return termsAccepted && hasFilledAllFields();
+        return termsAccepted && hasFilledAllFields() && !loading;
     };
 
-    const handleConfirmTransaction = () => {
+    const handleConfirmTransaction = async () => {
         if (!isButtonEnabled()) return;
 
         if (!isStudentInfoValid()) {
@@ -121,8 +128,8 @@ const PaymentForm: React.FC<PaymentFormProps> = ({ currentUser, language }) => {
             return;
         }
 
-        const tuitionFee = getCurrentTuitionFee(searchedStudent.studentId);
-        if (!tuitionFee || tuitionFee.total === 0) {
+        //const tuitionFee = getCurrentTuitionFee(searchedStudent.studentId);
+        if (!searchedStudent || searchedStudent.amount_due === 0) {
             setShowErrorModal(true);
             setErrorMessage(language === 'vi'
                 ? 'Sinh viên này không có khoản nợ học phí nào'
@@ -130,7 +137,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({ currentUser, language }) => {
             return;
         }
 
-        if (currentUser.availableBalance < tuitionFee.total) {
+        if (updatedUser.balance < searchedStudent.amount_due) {
             setShowErrorModal(true);
             setErrorMessage(language === 'vi'
                 ? 'Số dư khả dụng không đủ để thanh toán'
@@ -138,25 +145,88 @@ const PaymentForm: React.FC<PaymentFormProps> = ({ currentUser, language }) => {
             return;
         }
 
-        setShowOTPInput(true);
-        setTimeRemaining(300);
+        //setShowOTPInput(true);
+        //setTimeRemaining(300);
+        setLoading(true);
+        try {
+            const response = await axios.post('http://localhost:8000/api/generate-otp', {
+                username: updatedUser.username,
+                mssv: searchedStudent.mssv
+            });
+            console.log('OTP generation response:', response.data);  
+            setShowOTPInput(true);
+            setTimeRemaining(300);
+            setOtpAttempts(0);
+        } catch (error: any) {
+            console.error('OTP generation error:', error.response?.data || error.message);  
+            setErrorMessage(language === 'vi' ? 'Lỗi tạo OTP' : 'Error generating OTP');
+            setShowErrorModal(true);
+        }
+        finally {
+            setLoading(false); // Hide loading state
+        }
+
     };
 
-    const handlePayment = () => {
-        const correctOTP = "123456";
-
+    const handlePayment = async () => {
+        //const correctOTP = "123456";// Should be changle later
+        console.log('Payment attempted with OTP:', otpValue);
         if (otpValue.trim() === '') {
             setShowErrorModal(true);
             setErrorMessage(language === 'vi' ? 'Vui lòng nhập mã OTP' : 'Please enter OTP code');
             return;
         }
 
-        if (otpValue === correctOTP) {
-            setShowErrorModal(true);
-            setErrorMessage(language === 'vi' ? 'Thanh toán thành công!' : 'Payment successful!');
+        setLoading(true);
+        try {
+            const verifyResponse = await axios.post('http://localhost:8000/api/verify-otp', {
+                username: updatedUser.username,
+                mssv: searchedStudent!.mssv,
+                otp: otpValue
+            });
+            console.log('OTP verification response:', verifyResponse.data);  
+            if (verifyResponse.data.success) {
+                // Process payment
+                const paymentResponse = await axios.post('http://localhost:8000/api/payment', {
+                    username: updatedUser.username,
+                    mssv: searchedStudent!.mssv,
+                    amount: searchedStudent!.amount_due
+                });
+                console.log('Payment response:', paymentResponse.data);  
+                setShowErrorModal(true);
+                setErrorMessage(language === 'vi' ? 'Thanh toán thành công!' : 'Payment successful!');
+                const userResponse = await axios.get(`http://localhost:8000/api/user/${updatedUser.username}`);
+                setUpdatedUser(userResponse.data);
+                setShouldReloadAfterModal(true);
+                setOtpAttempts(0);
+                /// Debugging here
+                /*
+                setTimeout(async () => {
+                    // Reset form
+                    setShowOTPInput(false);
+                    setOtpValue('');
+                    setTermsAccepted(false);
+                    setInputStudentId('');
+                    setInputStudentName('');
+                    setSearchedStudent(null);
+                    setTimeRemaining(300);
+                    setShowErrorModal(false);
+                    tuitionInfoRef.current?.reset();
+                    localStorage.removeItem('paymentFormState');
+                    console.log('Form reset after payment');  
 
-            setTimeout(() => {
-                // Reset PaymentForm state
+                    // Refresh student data
+                    if (inputStudentId) {
+                        try {
+                            const studentResponse = await axios.get(`http://localhost:8000/api/student/${inputStudentId}`);
+                            console.log('Refreshed student data:', studentResponse.data);  
+                            setSearchedStudent(studentResponse.data);
+                            setInputStudentName(studentResponse.data.full_name);
+                        } catch (error: any) {
+                            console.error('Error refreshing student data:', error.response?.data || error.message);  
+                        }
+                    }
+                }, 2000);*/
                 setShowOTPInput(false);
                 setOtpValue('');
                 setTermsAccepted(false);
@@ -164,36 +234,129 @@ const PaymentForm: React.FC<PaymentFormProps> = ({ currentUser, language }) => {
                 setInputStudentName('');
                 setSearchedStudent(null);
                 setTimeRemaining(300);
-                setShowErrorModal(false);
-
-                // Reset TuitionInfo via ref
                 tuitionInfoRef.current?.reset();
-
-                // Clear localStorage
                 localStorage.removeItem('paymentFormState');
-            }, 2000);
+                console.log('Form reset after payment'); 
+            } else {
+                setOtpAttempts(prev => prev + 1); // Increment OTP attempts
+                console.log('Current OTP attempts:', otpAttempts + 1);  // Debug log
+                if (otpAttempts + 1 >= 3) {
+                    setShowErrorModal(true);
+                    setErrorMessage(language === 'vi'
+                        ? 'Đã vượt quá số lần nhập OTP cho phép!'
+                        : 'Exceeded allowed OTP attempts!');
+                    setShouldReloadAfterModal(true); // Reload after modal close
+                    setShowOTPInput(false); // Stop payment process
+                    setOtpValue('');
+                    setTermsAccepted(false);
+                    setInputStudentId('');
+                    setInputStudentName('');
+                    setSearchedStudent(null);
+                    setTimeRemaining(300);
+                    tuitionInfoRef.current?.reset();
+                    localStorage.removeItem('paymentFormState');
+                    console.log('Form reset after max OTP attempts');  // Debug log
+                }
+                else {
+                    setShowErrorModal(true);
+                    setErrorMessage(language === 'vi' ? 'Mã OTP không đúng!' : 'Invalid OTP code!');
+                    setOtpValue(''); // Clear OTP input for retry
+                    console.log('Invalid OTP');  // Debug log
+                }
+
+            }
+        } catch (error: any) {
+            console.error('Payment error:', error.response?.data || error.message);  
+            //setErrorMessage(language === 'vi' ? 'Lỗi thanh toán' : 'Payment error');
+            //setShowErrorModal(true);
+            //setShouldReloadAfterModal(true); 
+            if (error.response?.status === 400 && error.response.data.message === 'Invalid OTP') {  // Adjust to match your backend's exact response
+        // Treat as invalid OTP (mimic the !success branch)
+        setOtpAttempts(prev => prev + 1);
+        if (otpAttempts + 1 >= 3) {
+            setShowErrorModal(true);
+            setErrorMessage(language === 'vi'
+                ? 'Đã vượt quá số lần nhập OTP cho phép!'
+                : 'Exceeded allowed OTP attempts!');
+            setShouldReloadAfterModal(true);
+            setShowOTPInput(false);
+            setOtpValue('');
+            setTermsAccepted(false);
+            setInputStudentId('');
+            setInputStudentName('');
+            setSearchedStudent(null);
+            setTimeRemaining(300);
+            tuitionInfoRef.current?.reset();
+            localStorage.removeItem('paymentFormState');
+            console.log('Form reset after max OTP attempts'); // Debug log
         } else {
             setShowErrorModal(true);
             setErrorMessage(language === 'vi' ? 'Mã OTP không đúng!' : 'Invalid OTP code!');
+            setOtpValue(''); // Clear OTP input for retry
+            console.log('Invalid OTP'); // Debug log
         }
+    } else {
+        // Generic error
+        setErrorMessage(language === 'vi' ? 'Lỗi thanh toán' : 'Payment error');
+        setShowErrorModal(true);
+        setShouldReloadAfterModal(true); // Reload after modal close
+    }
+        }
+        finally {
+            setLoading(false); // Hide loading state
+            // Auto-reload page after payment (success or failure)
+            
+        }
+
     };
 
     // Hàm Resend OTP
-    const handleResendOTP = () => {
-        setOtpValue('');
-        setTimeRemaining(300);
-        setShowErrorModal(true);
-        setErrorMessage(language === 'vi' ? 'Mã OTP mới đã được gửi!' : 'New OTP code has been sent!');
+    const handleResendOTP = async () => {
+        console.log('Resending OTP');  
+        setLoading(true);
+        try {
+            const response = await axios.post('http://localhost:8000/api/generate-otp', {
+                username: updatedUser.username,
+                mssv: searchedStudent!.mssv
+            });
+            console.log('Resend OTP response:', response.data);  
+            setOtpValue('');
+            setTimeRemaining(300);
+            setOtpAttempts(0);
+            setShowErrorModal(true);
+            setErrorMessage(language === 'vi' ? 'Mã OTP mới đã được gửi!' : 'New OTP code has been sent!');
+        } catch (error: any) {
+            console.error('Resend OTP error:', error.response?.data || error.message); 
+            setErrorMessage(language === 'vi' ? 'Lỗi gửi lại OTP' : 'Error resending OTP');
+            setShowErrorModal(true);
+        }
+        finally {
+            setLoading(false); // Hide loading state
+        }
     };
+
+    const getModalButtonText = () => {
+        if (errorMessage === (language === 'vi' ? 'Mã OTP không đúng!' : 'Invalid OTP code!')) {
+            return language === 'vi' ? 'Nhập lại' : 'Retry';
+        }
+        else if (errorMessage === (language === 'vi' ? 'Đã vượt quá số lần nhập OTP cho phép!' : 'Exceeded allowed OTP attempts!')) {
+            return language === 'vi' ? 'Trở về' : 'Back';
+        }
+        else{
+            return language === 'vi' ? 'Đồng ý' : 'OK';
+        }
+        
+    };
+
 
     return (
         <>
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <PayerInfo currentUser={currentUser} language={language} />
+                <PayerInfo currentUser={updatedUser} language={language} />
                 <TuitionInfo ref={tuitionInfoRef} language={language} onDataChange={handleTuitionDataChange} />
                 <PaymentDetails
                     searchedStudent={searchedStudent}
-                    currentUser={currentUser}
+                    currentUser={updatedUser}
                     language={language}
                     termsAccepted={termsAccepted}
                     onTermsChange={handleTermsChange}
@@ -248,9 +411,17 @@ const PaymentForm: React.FC<PaymentFormProps> = ({ currentUser, language }) => {
                                             }
                                         }}
                                         onKeyDown={(e) => {
-                                            if (e.key === 'Backspace' && !otpValue[index] && index > 0) {
-                                                const prevInput = document.getElementById(`otp-${index - 1}`);
-                                                prevInput?.focus();
+                                            if (e.key === 'Backspace' || e.key === 'Delete') {
+                                                if (otpValue[index]) {
+                                                    const newOtp = otpValue.split('');
+                                                    newOtp[index] = '';
+                                                    setOtpValue(newOtp.join(''));
+                                                    console.log('OTP digit deleted:', {index});  
+                                                } else if (index > 0) {
+                                                    const prevInput = document.getElementById(`otp-${index - 1}`);
+                                                    prevInput?.focus();
+                                                    console.log('Moved to previous input:', {index: index - 1});  
+                                                }
                                             }
                                         }}
                                         id={`otp-${index}`}
@@ -339,7 +510,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({ currentUser, language }) => {
                         }}
                         onClick={handleConfirmTransaction}
                     >
-                        {language === 'vi' ? 'XÁC NHẬN GIAO DỊCH' : 'CONFIRM TRANSACTION'}
+                        {loading ? (language === 'vi' ? 'Đang xử lý...' : 'Processing...') : (language === 'vi' ? 'XÁC NHẬN GIAO DỊCH' : 'CONFIRM TRANSACTION')}
                     </Button>
                 ) : (
                     <Button
@@ -361,16 +532,25 @@ const PaymentForm: React.FC<PaymentFormProps> = ({ currentUser, language }) => {
                         }}
                         onClick={handlePayment}
                     >
-                        {language === 'vi' ? 'THANH TOÁN' : 'PAY NOW'}
+                        
+                        {loading ? (language === 'vi' ? 'Đang xử lý...' : 'Processing...') : (language === 'vi' ? 'THANH TOÁN' : 'PAY NOW')}
                     </Button>
                 )}
             </div>
 
             <ErrorModal
                 isOpen={showErrorModal}
-                onClose={() => setShowErrorModal(false)}
+                onClose={() => {
+                    setShowErrorModal(false);
+                    if (shouldReloadAfterModal) {
+                        console.log('Reloading page after modal close');  // Debug log
+                        window.location.reload();
+                    }
+                    
+
+                }}
                 title={errorMessage}
-                okButtonText={language === 'vi' ? 'Đồng ý' : 'OK'}
+                okButtonText={getModalButtonText()}
             />
         </>
     );

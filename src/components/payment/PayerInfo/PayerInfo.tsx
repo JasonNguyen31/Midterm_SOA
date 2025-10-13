@@ -1,4 +1,5 @@
 import React from 'react';
+import type { UserData } from '../../../types/auth.types';
 
 interface PayerInfoProps {
     currentUser: any;
@@ -18,7 +19,7 @@ const PayerInfo: React.FC<PayerInfoProps> = ({ currentUser, language }) => {
                     </label>
                     <input
                         type="text"
-                        value={currentUser.fullName}
+                        value={currentUser.full_name}
                         readOnly
                         className="w-full bg-gray-50 border border-gray-300 rounded-sm"
                         style={{ paddingLeft: '10px', outline: 'none', cursor: 'default' }}

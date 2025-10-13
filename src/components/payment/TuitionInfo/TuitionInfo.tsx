@@ -1,23 +1,25 @@
 import React, { useState, useImperativeHandle, forwardRef } from 'react';
-import { getCurrentTuitionFee, getStudentById } from '../../../data/mockData';
+import axios from 'axios';
+import type { StudentData } from '../../../types/auth.types';
 import ErrorModal from '../../common/Modal/ErrorModal';
 
 interface TuitionInfoProps {
-    language: 'vi' | 'en';
-    onDataChange: (studentId: string, studentName: string, student: any) => void;
+  language: 'vi' | 'en';
+  onDataChange: (studentId: string, studentName: string, student: StudentData | null) => void;
 }
 
 export interface TuitionInfoRef {
-    reset: () => void;
+  reset: () => void;
 }
+
 
 const TuitionInfo = forwardRef<TuitionInfoRef, TuitionInfoProps>(({ language, onDataChange }, ref) => {
     const [inputStudentId, setInputStudentId] = useState('');
-    const [studentData, setStudentData] = useState<any>(null);
+    const [studentData, setStudentData] = useState<StudentData | null>(null);
     const [showErrorModal, setShowErrorModal] = useState(false);
     const [errorMessage, setErrorMessage] = useState('');
 
-    const tuitionFee = studentData ? getCurrentTuitionFee(studentData.studentId) : null;
+    //const tuitionFee = studentData ? getCurrentTuitionFee(studentData.studentId) : null;
 
     // Expose reset method to parent
     useImperativeHandle(ref, () => ({
@@ -28,7 +30,7 @@ const TuitionInfo = forwardRef<TuitionInfoRef, TuitionInfoProps>(({ language, on
         }
     }));
 
-    const handleSearch = () => {
+    const handleSearch = async () => {
         if (inputStudentId.trim() === '') {
             setErrorMessage(language === 'vi' ? 'Vui lòng nhập mã sinh viên' : 'Please enter student ID');
             setShowErrorModal(true);
@@ -37,17 +39,19 @@ const TuitionInfo = forwardRef<TuitionInfoRef, TuitionInfoProps>(({ language, on
             return;
         }
 
-        const foundStudent = getStudentById(inputStudentId.trim());
-
-        if (foundStudent) {
-            setStudentData(foundStudent);
-            onDataChange(inputStudentId, foundStudent.fullName, foundStudent);
-        } else {
-            setStudentData(null);
-            onDataChange(inputStudentId, '', null);
-            setErrorMessage(language === 'vi' ? 'Không tìm thấy sinh viên với mã này' : 'Student not found with this ID');
-            setShowErrorModal(true);
-        }
+       try {
+      const response = await axios.get(`http://localhost:8000/api/student/${inputStudentId.trim()}`);
+      const foundStudent = response.data;
+      setStudentData(foundStudent);
+      onDataChange(inputStudentId, foundStudent.full_name, foundStudent);
+    } catch (error: any) {
+      setStudentData(null);
+      onDataChange(inputStudentId, '', null);
+      setErrorMessage(
+        language === 'vi' ? 'Không tìm thấy sinh viên với mã này' : 'Student not found with this ID'
+      );
+      setShowErrorModal(true);
+    }
     };
 
     const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -96,7 +100,7 @@ const TuitionInfo = forwardRef<TuitionInfoRef, TuitionInfoProps>(({ language, on
                     </label>
                     <input
                         type="text"
-                        value={studentData?.fullName || ''}
+                        value={studentData?.full_name || ''}
                         readOnly
                         placeholder={language === 'vi' ? 'Tự động hiển thị' : 'Auto display'}
                         className="w-full bg-gray-50 border border-gray-300 rounded-sm"
@@ -111,12 +115,12 @@ const TuitionInfo = forwardRef<TuitionInfoRef, TuitionInfoProps>(({ language, on
                     <input
                         type="text"
                         value={
-                            studentData && tuitionFee
-                                ? tuitionFee.total > 0
+                            studentData
+                                ? studentData.amount_due > 0
                                     ? new Intl.NumberFormat('vi-VN', {
                                         style: 'currency',
                                         currency: 'VND'
-                                    }).format(tuitionFee.total)
+                                    }).format(studentData.amount_due)
                                     : language === 'vi'
                                         ? 'Đã thanh toán học phí'
                                         : 'Tuition paid'
@@ -124,9 +128,9 @@ const TuitionInfo = forwardRef<TuitionInfoRef, TuitionInfoProps>(({ language, on
                         }
                         readOnly
                         placeholder={language === 'vi' ? 'Tự động hiển thị' : 'Auto display'}
-                        className={`w-full border rounded-sm font-bold ${studentData && tuitionFee && tuitionFee.total > 0
+                        className={`w-full border rounded-sm font-bold ${studentData && studentData.amount_due > 0
                                 ? 'bg-yellow-50 border-yellow-300 text-red-600'
-                                : studentData && tuitionFee && tuitionFee.total === 0
+                                : studentData && studentData.amount_due === 0
                                     ? 'bg-green-50 border-green-300 text-green-700'
                                     : 'bg-gray-50 border-gray-300 text-gray-500'
                             }`}

@@ -1,6 +1,14 @@
+export type Language = 'en' | 'vi';
+
 export interface LoginCredentials {
-    studentId: string;
+    username: string;
     password: string;
+}
+
+export interface User {
+  username: string;
+  name: string;
+  
 }
 
 export interface LoginResponse {
@@ -9,14 +17,20 @@ export interface LoginResponse {
     user?: User;
 }
 
-export interface User {
-    id: string;
-    studentId: string;
-    name?: string;
-    role: 'student';
+export interface UserData {
+  username: string;
+  full_name: string;
+  phone: string | null;
+  email: string;
+  balance: number;
 }
 
-export type Language = 'en' | 'vi';
+export interface StudentData {
+  mssv: string;
+  full_name: string;
+  amount_due: number;
+}
+
 
 export interface LoginTexts {
     greeting: string;

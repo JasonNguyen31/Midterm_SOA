@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { getCurrentTuitionFee } from '../../../data/mockData';
-
+//import { getCurrentTuitionFee } from '../../../data/mockData';
+import type { StudentData, UserData } from '../../../types/auth.types';
 interface PaymentDetailsProps {
-    searchedStudent: any;
-    currentUser: any;
+    searchedStudent: StudentData | null;
+    currentUser: UserData;
     language: 'vi' | 'en';
     termsAccepted: boolean; // Thêm prop này
     onTermsChange: (accepted: boolean) => void;
@@ -18,7 +18,7 @@ const PaymentDetails: React.FC<PaymentDetailsProps> = ({
 }) => {
     const [internalTermsAccepted, setInternalTermsAccepted] = useState(termsAccepted);
 
-    const tuitionFee = searchedStudent ? getCurrentTuitionFee(searchedStudent.studentId) : null;
+    //const tuitionFee = searchedStudent ? getCurrentTuitionFee(searchedStudent.studentId) : null;
 
     // Đồng bộ state nội bộ với prop từ parent
     useEffect(() => {
@@ -39,11 +39,11 @@ const PaymentDetails: React.FC<PaymentDetailsProps> = ({
             <div>
                 <div style={{ marginBottom: '8px' }}>
                     <label className="block text-sm font-medium text-gray-700" style={{ marginBottom: '3px' }}>
-                        {language === 'vi' ? 'Số dư khả dụng (Người nộp)' : 'Available Balance (Payer)'}
+                        {language === 'vi' ? 'Số dư khả dụng (Người nộp)' : 'Available Balance (Customer)'}
                     </label>
                     <input
                         type="text"
-                        value={new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(currentUser.availableBalance)}
+                        value={new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(currentUser.balance)}
                         readOnly
                         className="w-full bg-green-50 border border-green-300 rounded-sm font-bold text-green-700"
                         style={{ paddingLeft: '10px', outline: 'none', cursor: 'default' }}
@@ -57,17 +57,18 @@ const PaymentDetails: React.FC<PaymentDetailsProps> = ({
                     <input
                         type="text"
                         value={
-                            searchedStudent && tuitionFee
-                                ? tuitionFee.total > 0
-                                    ? new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(tuitionFee.total)
+                            /*searchedStudent && tuitionFee
+                                ? tuitionFee.total > 0*/ searchedStudent
+                ? searchedStudent.amount_due > 0
+                                    ? new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(searchedStudent.amount_due)
                                     : language === 'vi' ? 'Đã thanh toán học phí' : 'Tuition paid'
                                 : ''
                         }
                         readOnly
                         placeholder={language === 'vi' ? 'Tự động hiển thị' : 'Auto display'}
-                        className={`w-full border rounded-sm font-bold ${searchedStudent && tuitionFee && tuitionFee.total > 0
+                        className={`w-full border rounded-sm font-bold ${searchedStudent && searchedStudent.amount_due > 0
                                 ? 'bg-yellow-50 border-yellow-300 text-red-600'
-                                : searchedStudent && tuitionFee && tuitionFee.total === 0
+                                : searchedStudent && searchedStudent.amount_due === 0
                                     ? 'bg-green-50 border-green-300 text-green-700'
                                     : 'bg-gray-50 border-gray-300 text-gray-500'
                             }`}

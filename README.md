@@ -102,28 +102,37 @@ npm >= 8.0.0
 git clone https://github.com/JasonNguyen31/Midterm_SOA.git
 cd Midterm_SOA
 ```
+### 2. Cài đặt DB
+Mở XAMPP lên (start Apache và MySQL) và truy cập server bằng cách click 'Admin' của MySQL.
+Mở file tuition_payment.db lên và chạy lệnh SQL.
+Database tuition_payment sẽ được tạo ra.
 
-### 2. Cài đặt dependencies
+
+### 3. Cài đặt dependencies
 
 ```bash
 npm install
+pip install fastapi uvicorn pymysql bcrypt python-multipart
 ```
 
-### 3. Chạy development server
-
+### 4. Chạy development server
+Mở 2 tab Command Prompt/Terminal (cả hai đều đang ở thư mục Midterm_SOA)
+Tab đầu tiên, chạy FrontEnd bằng lệnh dưới:
 ```bash
 npm run dev
 ```
+FrontEnd của ứng dụng sẽ chạy tại: `http://localhost:5173`
 
-Ứng dụng sẽ chạy tại: `http://localhost:5173`
-
-### 4. Build production
+ Tab thứ hai, chạy BackEnd bằng lệnh dưới:
+ python app.py (chương trình sẽ tự chạy lệnh unvicorn)
+BackEnd sẽ chạy tại: `http://localhost:8000`
+### 5. Build production
 
 ```bash
 npm run build
 ```
 
-### 5. Preview production build
+### 6. Preview production build
 
 ```bash
 npm run preview
@@ -175,6 +184,7 @@ midtermproject/
 │   │   └── languageService.ts # i18n service
 │   ├── App.tsx               # Root component với routing
 │   └── main.tsx              # Application entry point
+├── app.py                    # BackEnd Python srcipts
 ├── index.html                # HTML template
 ├── package.json              # Dependencies & scripts
 ├── tsconfig.json             # TypeScript configuration
@@ -233,7 +243,7 @@ midtermproject/
 
 ## TÀI KHOẢN DEMO
 
-### Tài khoản 1 (Có học phí chưa thanh toán)
+### Tài khoản 1 (Có học phí chưa thanh toán) và là sinh viên
 
 ```
 Mã sinh viên: 521h0185
@@ -242,7 +252,7 @@ Số dư khả dụng: 25,000,000 VNĐ
 Học phí còn nợ: 15,050,000 VNĐ
 ```
 
-### Tài khoản 2 (Có học phí chưa thanh toán)
+### Tài khoản 2 (Có học phí chưa thanh toán) và là sinh viên
 
 ```
 Mã sinh viên: 521h0186
@@ -251,21 +261,20 @@ Số dư khả dụng: 18,000,000 VNĐ
 Học phí còn nợ: 18,359,091 VNĐ
 ```
 
-### Tài khoản 3 (Đã thanh toán đủ học phí)
+### Tài khoản 3 (Chưa thanh toán đủ học phí) và là sinh viên
 
 ```
-Mã sinh viên: 521h0187
+Mã sinh viên/username: 521h0187
 Mật khẩu: pass123
 Số dư khả dụng: 30,000,000 VNĐ
-Học phí còn nợ: 0 VNĐ (Đã thanh toán)
+Học phí còn nợ: 10,000,000,000 VNĐ (Chưa thanh toán)
 ```
 
-### Mã OTP Demo
+### Tài khoản 4 (Khách hàng, không phải sinh viên)
+Username: michael
+Mật khẩu: 123456
+Số dư khả dụng: 97,850,000 VNĐ
 
-```
-OTP: 123456
-Thời gian hiệu lực: 5 phút (300 giây)
-```
 
 ## HƯỚNG DẪN SỬ DỤNG
 
@@ -295,7 +304,7 @@ Thời gian hiệu lực: 5 phút (300 giây)
 
 4. Nhập mã OTP (6 số) trong vòng 5 phút
 
-   - Mã OTP demo: `123456`
+   - Mã OTP sẽ được gửi qua email người dùng
    - Có thể click "Gửi lại mã OTP" nếu hết thời gian
 
 5. Click nút "THANH TOÁN" để hoàn tất

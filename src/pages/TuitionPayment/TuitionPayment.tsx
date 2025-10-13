@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
 import useDocumentTitle from '../../hooks/useDocumentTitle';
 import { PAGE_TITLES, UI_CONSTANTS } from '../../utils/constants';
-import { getCurrentStudentData } from '../../utils/auth';
-import type { Language } from '../../types/auth.types';
+import { getCurrentUser } from '../../utils/auth';
+import type { Language, UserData} from '../../types/auth.types';
 import PaymentForm from '../../components/payment/PaymentForm/PaymentForm';
 import { languageService } from '../../utils/languageService';
 
@@ -12,9 +13,37 @@ const TuitionPayment: React.FC = () => {
     const [language, setLanguage] = useState<Language>(() => languageService.getLanguage());
     const [resetFormKey, setResetFormKey] = useState<number>(0);
 
-    const [currentStudentData] = useState(() => getCurrentStudentData());
+    const [currentUserData, setCurrentUserData] = useState<UserData | null>(null);
+    const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
     useDocumentTitle(PAGE_TITLES.PAYMENT);
+
+    useEffect(() => {
+        const user = getCurrentUser();
+        console.log('Current user:', user);
+        if (!user) {
+        navigate('/');
+        return;
+        }
+
+        // Fetch student data from backend
+        const fetchCustomerData = async () => {
+        try {
+            const response = await axios.get(`http://localhost:8000/api/user/${user.username}`);
+            setCurrentUserData(response.data);
+        } catch (error: any) {
+            console.error('Error fetching user data:', error.response?.data || error.message);
+            setErrorMessage(error.response?.data?.detail || 'Failed to load user data');
+            navigate('/');
+        }
+    };
+
+    fetchCustomerData();
+  }, [navigate]);
+
+
+
+
 
     // Lắng nghe thay đổi ngôn ngữ từ các trang khác
     useEffect(() => {
@@ -56,7 +85,7 @@ const TuitionPayment: React.FC = () => {
         }
     };
 
-    if (!currentStudentData) {
+    if (!currentUserData) {
         navigate('/');
         return null;
     }
@@ -106,7 +135,7 @@ const TuitionPayment: React.FC = () => {
                             {texts[language].paymentInfo}
                         </h2>
 
-                        <PaymentForm currentUser={currentStudentData} language={language} key={resetFormKey} />
+                        <PaymentForm currentUser={currentUserData} language={language} key={resetFormKey} />
                     </div>
                 </div>
             </div>

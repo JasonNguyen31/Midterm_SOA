@@ -1,16 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import Button from '../../components/common/Button/Button';
+import axios from 'axios';
+import type { LoginCredentials, Language } from '../../types/auth.types';
+
 import ErrorModal from '../../components/common/Modal/ErrorModal';
-import { simulateLogin } from '../../utils/auth';
-import { LOGIN_TEXTS, PAGE_TITLES, UI_CONSTANTS } from '../../utils/constants';
-import type { Language, LoginCredentials } from '../../types/auth.types';
+import Button from '../../components/common/Button/Button';
+
 import useDocumentTitle from '../../hooks/useDocumentTitle';
+import { LOGIN_TEXTS, PAGE_TITLES, UI_CONSTANTS } from '../../utils/constants';
+
+
 import { languageService } from '../../utils/languageService';
 
 const Login: React.FC = () => {
     const navigate = useNavigate();
-    const [studentId, setStudentId] = useState('');
+    const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
     const [language, setLanguage] = useState<Language>(() => languageService.getLanguage());
@@ -21,7 +25,7 @@ const Login: React.FC = () => {
 
     useDocumentTitle(PAGE_TITLES.LOGIN);
 
-    // Lắng nghe thay đổi ngôn ngữ từ các trang khác
+
     useEffect(() => {
         const unsubscribe = languageService.subscribe((newLanguage) => {
             setLanguage(newLanguage);
@@ -44,13 +48,15 @@ const Login: React.FC = () => {
         setIsLoading(true);
 
         try {
-            const credentials: LoginCredentials = { studentId, password };
-            const response = await simulateLogin(credentials);
-
-            if (response.success && response.user) {
-                localStorage.setItem('user', JSON.stringify(response.user));
+            const credentials: LoginCredentials = {username, password };
+            const response = await axios.post('http://localhost:8000/api/login', credentials);
+            console.log('Login response:', response.data);
+            if (response.data.success && response.data.user) {
+                console.log('Storing user in localStorage:', response.data.user);
+                localStorage.setItem('user', JSON.stringify(response.data.user));
                 navigate('/tuition-payment');
             } else {
+                console.log('Login failed: No user data or success=false');
                 setShowErrorModal(true);
             }
         } catch (error) {
@@ -186,7 +192,7 @@ const Login: React.FC = () => {
                                             style={{
                                                 width: '20px',
                                                 height: '20px',
-                                                color: focusedInput === 'studentId' ? UI_CONSTANTS.COLORS.ERROR_RED : UI_CONSTANTS.COLORS.GRAY_TEXT,
+                                                color: focusedInput === 'username' ? UI_CONSTANTS.COLORS.ERROR_RED : UI_CONSTANTS.COLORS.GRAY_TEXT,
                                                 transition: 'color 0.3s ease'
                                             }}
                                             fill="none"
@@ -200,9 +206,9 @@ const Login: React.FC = () => {
                                     <input
                                         type="text"
                                         placeholder={texts.studentIdPlaceholder}
-                                        value={studentId}
-                                        onChange={(e) => setStudentId(e.target.value)}
-                                        onFocus={() => setFocusedInput('studentId')}
+                                        value={username}
+                                        onChange={(e) => setUsername(e.target.value)}
+                                        onFocus={() => setFocusedInput('username')} //Might be
                                         onBlur={() => setFocusedInput(null)}
                                         disabled={isLoading}
                                         style={{
