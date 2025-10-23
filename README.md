@@ -27,6 +27,7 @@ Dự án xây dựng phân hệ thanh toán học phí trực tuyến, là một
 - Đăng nhập an toàn với xác thực username/password
 - Tra cứu thông tin học phí theo mã sinh viên
 - Thực hiện thanh toán học phí trực tuyến
+- Có thể thanh toán học phí cho người khác
 - Xác thực giao dịch qua mã OTP gửi email
 - Hỗ trợ đa ngôn ngữ (Tiếng Việt/English)
 
@@ -145,8 +146,8 @@ XAMPP (hoặc MySQL server riêng)
 ### 1. Clone hoặc tải dự án về
 
 ```bash
-git clone https://github.com/JasonNguyen31/Midterm_SOA.git
-cd Midterm_SOA
+git git clone -b App_v1 https://github.com/JasonNguyen31/Midterm_SOA.git folder_name
+cd folder_name
 ```
 
 ### 2. Cài đặt Database
@@ -181,7 +182,7 @@ pip install fastapi uvicorn pymysql bcrypt python-multipart
 
 ### 4. Chạy Development Servers
 
-Mở **2 tab Terminal/Command Prompt** (cả hai đều ở thư mục `Midterm_SOA`)
+Mở **2 tab Terminal/Command Prompt** (cả hai đều ở thư mục `folder_name`)
 
 #### Tab 1: Frontend
 
@@ -238,9 +239,9 @@ npm run type-check
 
 ```
 midtermsoa/
-├── app.py                    # ⭐ Backend FastAPI server
+├── app.py                    # Backend FastAPI server
 ├── add_user.py              # Script thêm user vào database
-├── tuitionpayment.sql       # ⭐ Database schema & sample data
+├── tuitionpayment.sql       # Database schema & sample data
 ├── public/                   # Static assets
 │   └── fonts/               # Font files
 ├── src/
@@ -596,8 +597,8 @@ DB_CONFIG = {
 ### Email Configuration (trong app.py)
 
 ```python
-EMAIL_SENDER = "guidervirus7486@gmail.com"
-EMAIL_PASSWORD = "ttay zqmd cikv bsxr"  # Gmail App Password
+EMAIL_SENDER = "guidervirus****@gmail.com"
+EMAIL_PASSWORD = "ttay **** **** ****"  # App Password
 SMTP_SERVER = "smtp.gmail.com"
 SMTP_PORT = 587
 ```
@@ -605,10 +606,10 @@ SMTP_PORT = 587
 **⚠️ LƯU Ý BẢO MẬT:**
 
 - Email credentials hiện tại chỉ dùng cho **development/demo**
+- Credentials trên đã được mask/thay đổi
 - **KHÔNG** commit credentials thật lên Git trong production
-- Nên sử dụng **environment variables** hoặc config files riêng
+- Người dùng cần tạo App Password riêng của mình
 - Gmail yêu cầu **App Password**, không dùng password thường
-- Hướng dẫn tạo App Password: https://support.google.com/accounts/answer/185833
 
 ### CORS Configuration (trong app.py)
 
@@ -958,7 +959,6 @@ Content-Type: application/json
 
 ### Performance
 
-- ✅ React.memo cho components (nếu cần)
 - ✅ useCallback/useMemo cho optimization
 - ✅ Lazy loading cho routes có thể thêm
 - ✅ Code splitting với Vite
@@ -979,7 +979,7 @@ Content-Type: application/json
 - ✅ Loading states cho async operations
 - ✅ Comprehensive error handling
 - ✅ Responsive design cho mọi device
-- ✅ Accessibility features (aria-labels có thể thêm)
+- ✅ Accessibility features
 - ✅ Smooth transitions và animations
 - ✅ Clear feedback cho user actions
 - ✅ Keyboard navigation support (Tab, Enter, Backspace)
@@ -1238,7 +1238,6 @@ SELECT * FROM payment_histories ORDER BY date DESC LIMIT 10;
 
 - **Repository**: https://github.com/JasonNguyen31/Midterm_SOA
 - **Issues**: https://github.com/JasonNguyen31/Midterm_SOA/issues
-- **Branch**: App_v1
 - **Email**: 521h0185@student.tdtu.edu.vn
 
 ## THÀNH VIÊN NHÓM
