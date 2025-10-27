@@ -9,6 +9,7 @@ import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from payment_lock import PaymentLockManager
+from email.utils import formataddr
 
 app = FastAPI()
 Lock = PaymentLockManager()
@@ -90,13 +91,14 @@ The function to send email below.
 Might need to modify it later.
 """
 
-def send_email(to_email: str, subject: str, body: str):
+def send_email(to_email: str, subject: str, body: str, is_html: bool = False):
     print(f"Sending email to {to_email} with subject: {subject}")  # Debug log
     msg = MIMEMultipart()
-    msg['From'] = EMAIL_SENDER
+    # Comment: This line sets the display name to "Tuition Payment App" instead of just the email address
+    msg['From'] = formataddr(("Tuition Payment App", EMAIL_SENDER))
     msg['To'] = to_email
     msg['Subject'] = subject
-    msg.attach(MIMEText(body, 'plain'))
+    msg.attach(MIMEText(body, 'html' if is_html else 'plain'))
 
     try:
         server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT)
@@ -108,7 +110,6 @@ def send_email(to_email: str, subject: str, body: str):
     except Exception as e:
         print(f"Error sending email: {str(e)}")  # Debug log
         raise HTTPException(status_code=500, detail=f"Error sending email: {str(e)}")
-
 
 
 @app.post("/api/login", response_model=LoginResponse)
@@ -224,8 +225,44 @@ async def generate_otp(request: GenerateOTPRequest):
             connection.commit()
             print("OTP stored in DB")  # Debug log
 
-            # Send OTP email
-            send_email(user_email, "Your OTP Code", f"Your OTP code is {otp}. It expires in 5 minutes.")
+            otp_html = otp_html = f"""
+            <!DOCTYPE html>
+            <html lang="vi">
+            <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>Tuition Payment App - Mã OTP</title>
+            </head>
+            <body style="margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #f9f9f9;">
+                <div style="max-width: 600px; margin: 0 auto; background-color: #fff; padding: 40px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+                    <!-- Header -->
+                    <div style="text-align: center; margin-bottom: 30px;">
+                        <img src="https://via.placeholder.com/150x50/007BFF/FFFFFF?text=TPA" alt="Tuition Payment App Logo" style="max-width: 150px; height: auto;">
+                        <h1 style="color: #333; font-size: 28px; margin: 10px 0; font-weight: bold;">Tuition Payment App</h1>
+                        <p style="color: #666; font-size: 16px; margin: 0;">Mã Xác Thực OTP Của Bạn</p>
+                        <p style="color: #666; font-size: 14px; margin: 5px 0 0;">Chúng tôi dùng mã này để xác thực giao dịch của bạn.</p>
+                    </div>
+                    
+                    <!-- Phần OTP -->
+                    <div style="background-color: #f0f0f0; padding: 20px; border-radius: 5px; text-align: center; margin-bottom: 20px;">
+                        <label style="display: block; color: #333; font-size: 14px; margin-bottom: 10px;">Mã OTP của bạn:</label>
+                        <input type="text" value="{otp}" style="font-size: 24px; font-weight: bold; border: none; background: transparent; text-align: center; letter-spacing: 5px; width: 100%; max-width: 200px;" readonly>
+                    </div>
+                    
+                    <p style="color: #666; font-size: 12px; text-align: center; margin: 0;">Lưu ý: Mã này chỉ hợp lệ trong 5 phút.</p>
+                    
+                    <!-- Footer -->
+                    <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee; text-align: center;">
+                        <p style="color: #666; font-size: 14px; margin: 0 0 10px;">Có câu hỏi hoặc gặp vấn đề?</p>
+                        <p style="color: #666; font-size: 14px; margin: 0 0 10px;">Chỉ cần reply email này!</p>
+                        <p style="color: #333; font-size: 16px; font-weight: bold; margin: 20px 0 0;">Trân trọng,</p>
+                        <p style="color: #333; font-size: 16px; margin: 5px 0 0;">Đội ngũ Tuition Payment App</p>
+                    </div>
+                </div>
+            </body>
+            </html>
+            """
+            send_email(user_email, "Your OTP Code", otp_html, is_html=True)
 
             return {"success": True, "message": "OTP generated and sent"}
     except pymysql.err.OperationalError as e:
@@ -312,10 +349,47 @@ async def process_payment(request: PaymentRequest):
 
             connection.commit()
 
-            # Send success email
-            send_email(user_email, "Payment Successful", f"Your payment of {request.amount} VND for student {request.mssv} was successful.")
-
+            payment_html = payment_html = f"""
+            <!DOCTYPE html>
+            <html lang="vi">
+            <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>Tuition Payment App - Thanh Toán Thành Công</title>
+            </head>
+            <body style="margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #f9f9f9;">
+                <div style="max-width: 600px; margin: 0 auto; background-color: #fff; padding: 40px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+                    <!-- Header -->
+                    <div style="text-align: center; margin-bottom: 30px;">
+                        <img src="https://via.placeholder.com/150x50/28A745/FFFFFF?text=TPA" alt="Tuition Payment App Logo" style="max-width: 150px; height: auto;">
+                        <h1 style="color: #333; font-size: 28px; margin: 10px 0; font-weight: bold;">Tuition Payment App</h1>
+                        <p style="color: #666; font-size: 16px; margin: 0;">Thanh Toán Thành Công!</p>
+                        <p style="color: #666; font-size: 14px; margin: 5px 0 0;">Cảm ơn bạn đã sử dụng dịch vụ của chúng tôi.</p>
+                    </div>
+                    
+                    <!-- Phần chi tiết thanh toán -->
+                    <div style="background-color: #f0f0f0; padding: 20px; border-radius: 5px; margin-bottom: 20px;">
+                        <h2 style="color: #333; font-size: 18px; margin: 0 0 15px;">Chi Tiết Giao Dịch</h2>
+                        <p style="color: #333; font-size: 14px; margin: 5px 0;"><strong>Số tiền:</strong> {request.amount} VND</p>
+                        <p style="color: #333; font-size: 14px; margin: 5px 0;"><strong>MSSV sinh viên:</strong> {request.mssv}</p>
+                        <p style="color: #333; font-size: 14px; margin: 5px 0;"><strong>Ngày thanh toán:</strong> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</p>
+                        <p style="color: #28A745; font-size: 16px; font-weight: bold; margin: 15px 0 0; text-align: center;">Trạng thái: Thành công</p>
+                    </div>
+                    
+                    <!-- Footer -->
+                    <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee; text-align: center;">
+                        <p style="color: #666; font-size: 14px; margin: 0 0 10px;">Có câu hỏi về giao dịch này?</p>
+                        <p style="color: #666; font-size: 14px; margin: 0 0 10px;">Chỉ cần reply email này hoặc liên hệ support@tuitionpayment.com</p>
+                        <p style="color: #333; font-size: 16px; font-weight: bold; margin: 20px 0 0;">Trân trọng,</p>
+                        <p style="color: #333; font-size: 16px; margin: 5px 0 0;">Đội ngũ Tuition Payment App</p>
+                    </div>
+                </div>
+            </body>
+            </html>
+            """
+            send_email(user_email, "Payment Successful", payment_html, is_html=True)
             return {"success": True, "message": "Payment processed successfully"}
+        
     except pymysql.err.OperationalError as e:
         print(f"Database error: {e}")  # Debug log
         raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
@@ -323,6 +397,26 @@ async def process_payment(request: PaymentRequest):
         connection.close()
         Lock.release(request.mssv)
 
+
+@app.get("/api/payment-history/{username}")
+async def get_payment_history(username: str):
+    try:
+        connection = connect_to_db()
+        with connection.cursor(pymysql.cursors.DictCursor) as cursor:
+            query = """
+                SELECT ph.id, ph.mssv, s.full_name, ph.amount, ph.date, ph.status
+                FROM payment_histories ph
+                LEFT JOIN students s ON ph.mssv = s.mssv
+                WHERE ph.username = %s
+                ORDER BY ph.date DESC
+            """
+            cursor.execute(query, (username,))
+            history = cursor.fetchall()
+        return {"history": history}
+    except pymysql.err.OperationalError as e:
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+    finally:
+        connection.close()
 
 
 # This is for add a new user only

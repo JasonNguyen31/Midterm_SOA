@@ -13,7 +13,14 @@ interface PaymentFormProps {
     currentUser: UserData;
     language: 'vi' | 'en';
 }
-
+interface PaymentHistoryItem {
+    id: number;
+    mssv: string;
+    full_name: string | null;
+    amount: number;
+    date: string;
+    status: string;
+}
 const PaymentForm: React.FC<PaymentFormProps> = ({ currentUser, language }) => {
     
     const [termsAccepted, setTermsAccepted] = useState(false);
@@ -32,6 +39,14 @@ const PaymentForm: React.FC<PaymentFormProps> = ({ currentUser, language }) => {
     const [updatedUser, setUpdatedUser] = useState<UserData>(currentUser);
     const [otpAttempts, setOtpAttempts] = useState(0);
     // Ref to TuitionInfo component
+
+
+    const [paymentHistory, setPaymentHistory] = useState<PaymentHistoryItem[]>([]);
+    const [isStudent, setIsStudent] = useState(false);
+    const [tuitionStatus, setTuitionStatus] = useState<number>(0);
+
+
+
     const tuitionInfoRef = useRef<TuitionInfoRef>(null);
 
     // Load state từ localStorage khi component mount
@@ -64,7 +79,20 @@ const PaymentForm: React.FC<PaymentFormProps> = ({ currentUser, language }) => {
         };
         localStorage.setItem('paymentFormState', JSON.stringify(state));
     }, [inputStudentId, inputStudentName, searchedStudent, termsAccepted, showOTPInput, otpValue, timeRemaining]);
-
+    useEffect(() => {
+        async function fetchData() {
+            try {
+                const historyRes = await axios.get(`http://localhost:8000/api/payment-history/${currentUser.username}`);
+                setPaymentHistory(historyRes.data.history);
+                const studentRes = await axios.get(`http://localhost:8000/api/student/${currentUser.username}`);
+                setIsStudent(true);
+                setTuitionStatus(studentRes.data.amount_due);
+            } catch (error: any) {
+                setIsStudent(false);
+            }
+        }
+        fetchData();
+    }, [currentUser.username]);
     // Timer đếm ngược cho OTP
     useEffect(() => {
         if (showOTPInput && timeRemaining > 0) {
@@ -236,6 +264,8 @@ const PaymentForm: React.FC<PaymentFormProps> = ({ currentUser, language }) => {
                 setTimeRemaining(300);
                 tuitionInfoRef.current?.reset();
                 localStorage.removeItem('paymentFormState');
+                const historyRes = await axios.get(`http://localhost:8000/api/payment-history/${currentUser.username}`);
+                setPaymentHistory(historyRes.data.history);
                 console.log('Form reset after payment'); 
             } else {
                 setOtpAttempts(prev => prev + 1); // Increment OTP attempts
@@ -362,7 +392,48 @@ const PaymentForm: React.FC<PaymentFormProps> = ({ currentUser, language }) => {
                     onTermsChange={handleTermsChange}
                 />
             </div>
-
+            {/* Payment History Container */}
+            <div className="mt-6 p-4 border rounded-lg">
+                <h2 className="text-xl font-bold mb-4">
+                    {language === 'vi' ? 'Lịch Sử Giao Dịch' : 'Payment History'}
+                </h2>
+                {isStudent && (
+                    <div className="mb-4">
+                        <span className="font-semibold">
+                            {language === 'vi' ? 'Tình trạng học phí: ' : 'Tuition Status: '}
+                        </span>
+                        <span style={{ color: tuitionStatus > 0 ? 'red' : 'green' }}>
+                            {language === 'vi'
+                                ? (tuitionStatus > 0 ? 'Nợ học phí' : 'Đã thanh toán')
+                                : (tuitionStatus > 0 ? 'Outstanding Debt' : 'Paid')}
+                        </span>
+                    </div>
+                )}
+                {paymentHistory.length > 0 ? (
+                    <table className="w-full border-collapse">
+                        <thead>
+                            <tr>
+                                <th className="border p-2">MSSV</th>
+                                <th className="border p-2">{language === 'vi' ? 'Họ Tên' : 'Full Name'}</th>
+                                <th className="border p-2">{language === 'vi' ? 'Số Tiền' : 'Amount'}</th>
+                                <th className="border p-2">{language === 'vi' ? 'Ngày' : 'Date'}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {paymentHistory.map((item) => (
+                                <tr key={item.id}>
+                                    <td className="border p-2">{item.mssv}</td>
+                                    <td className="border p-2">{item.full_name || 'N/A'}</td>
+                                    <td className="border p-2">{item.amount.toLocaleString()} VND</td>
+                                    <td className="border p-2">{new Date(item.date).toLocaleString()}</td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                ) : (
+                    <p>{language === 'vi' ? 'Chưa có lịch sử giao dịch' : 'No payment history'}</p>
+                )}
+            </div>
             {/* OTP Input Section */}
             {showOTPInput && (
                 <div className="flex justify-center">
