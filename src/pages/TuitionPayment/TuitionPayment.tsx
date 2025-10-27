@@ -4,8 +4,10 @@ import axios from 'axios';
 import useDocumentTitle from '../../hooks/useDocumentTitle';
 import { PAGE_TITLES, UI_CONSTANTS } from '../../utils/constants';
 import { getCurrentUser } from '../../utils/auth';
-import type { Language, UserData} from '../../types/auth.types';
+import type { Language, UserData } from '../../types/auth.types';
 import PaymentForm from '../../components/payment/PaymentForm/PaymentForm';
+import type { PaymentHistoryItem } from '../../components/payment/PaymentForm/PaymentForm';
+import PaymentHistory from '../../components/payment/PaymentHistory/PaymentHistory';
 import { languageService } from '../../utils/languageService';
 
 const TuitionPayment: React.FC = () => {
@@ -16,34 +18,35 @@ const TuitionPayment: React.FC = () => {
     const [currentUserData, setCurrentUserData] = useState<UserData | null>(null);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
+    // State for Payment History
+    const [paymentHistory, setPaymentHistory] = useState<PaymentHistoryItem[]>([]);
+    const [isStudent, setIsStudent] = useState(false);
+    const [tuitionStatus, setTuitionStatus] = useState<number>(0);
+
     useDocumentTitle(PAGE_TITLES.PAYMENT);
 
     useEffect(() => {
         const user = getCurrentUser();
         console.log('Current user:', user);
         if (!user) {
-        navigate('/');
-        return;
-        }
-
-        // Fetch student data from backend
-        const fetchCustomerData = async () => {
-        try {
-            const response = await axios.get(`http://localhost:8000/api/user/${user.username}`);
-            setCurrentUserData(response.data);
-        } catch (error: any) {
-            console.error('Error fetching user data:', error.response?.data || error.message);
-            setErrorMessage(error.response?.data?.detail || 'Failed to load user data');
             navigate('/');
+            return;
         }
-    };
 
-    fetchCustomerData();
-  }, [navigate]);
+        // Fetch customer data from backend
+        const fetchCustomerData = async () => {
+            try {
+                const response = await axios.get(`http://localhost:8000/api/user/${user.username}`);
+                setCurrentUserData(response.data);
+            } catch (error: any) {
+                console.error('Error fetching user data:', error.response?.data || error.message);
+                setErrorMessage(error.response?.data?.detail || 'Failed to load user data');
+                navigate('/');
+            }
+        };
 
-
-
-
+        fetchCustomerData();
+    }, [navigate]);
 
     // Lắng nghe thay đổi ngôn ngữ từ các trang khác
     useEffect(() => {
@@ -64,6 +67,12 @@ const TuitionPayment: React.FC = () => {
         localStorage.removeItem('user');
         setResetFormKey(prev => prev + 1);
         navigate('/');
+    };
+
+    const handlePaymentHistoryUpdate = (history: PaymentHistoryItem[], studentStatus: boolean, status: number) => {
+        setPaymentHistory(history);
+        setIsStudent(studentStatus);
+        setTuitionStatus(status);
     };
 
     const texts = {
@@ -130,13 +139,27 @@ const TuitionPayment: React.FC = () => {
             {/* Main Content */}
             <div className="flex-grow flex justify-center" style={{ minHeight: 'calc(100vh - 200px)' }}>
                 <div className="w-full max-w-7xl" style={{ paddingLeft: '16px', paddingRight: '16px' }}>
+                    {/* Payment Form Section */}
                     <div className="rounded-lg shadow-md" style={{ marginBottom: '20px', marginTop: '20px', padding: '20px', backgroundColor: UI_CONSTANTS.COLORS.GRAY_LIGHT }}>
                         <h2 className="text-2xl font-bold" style={{ color: UI_CONSTANTS.COLORS.PRIMARY, marginBottom: '20px' }}>
                             {texts[language].paymentInfo}
                         </h2>
 
-                        <PaymentForm currentUser={currentUserData} language={language} key={resetFormKey} />
+                        <PaymentForm
+                            currentUser={currentUserData}
+                            language={language}
+                            key={resetFormKey}
+                            onPaymentHistoryUpdate={handlePaymentHistoryUpdate}
+                        />
                     </div>
+
+                    {/* Payment History Section */}
+                    <PaymentHistory
+                        paymentHistory={paymentHistory}
+                        isStudent={isStudent}
+                        tuitionStatus={tuitionStatus}
+                        language={language}
+                    />
                 </div>
             </div>
 
