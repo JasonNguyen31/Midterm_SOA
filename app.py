@@ -8,10 +8,10 @@ import random
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-
+from payment_lock import PaymentLockManager
 
 app = FastAPI()
-
+Lock = PaymentLockManager()
 
 app.add_middleware(
     CORSMiddleware,
@@ -268,6 +268,8 @@ async def verify_otp(request: VerifyOTPRequest):
 @app.post("/api/payment")
 async def process_payment(request: PaymentRequest):
     print(f"Processing payment for username: {request.username}, mssv: {request.mssv}, amount: {request.amount}")  # Debug log
+
+    Lock.acquire(request.mssv)
     try:
         connection = connect_to_db()
         with connection.cursor(pymysql.cursors.DictCursor) as cursor:
@@ -319,6 +321,7 @@ async def process_payment(request: PaymentRequest):
         raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
     finally:
         connection.close()
+        Lock.release(request.mssv)
 
 
 
